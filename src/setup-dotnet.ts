@@ -1,5 +1,5 @@
 import * as core from '@actions/core';
-import {DotnetCoreInstaller, DotnetInstallDir} from './installer';
+import {DotnetCoreInstaller} from './installer';
 import * as fs from 'fs';
 import path from 'path';
 import semver from 'semver';
@@ -21,6 +21,8 @@ export type QualityOptions = (typeof qualityOptions)[number];
 
 export async function run() {
   try {
+    const baseTag = 'v4.3.1';
+    core.info(`sgnus-k8s/setup-dotnet@use-cache: based on actions/setup-dotnet@${baseTag}`);
     //
     // dotnet-version is optional, but needs to be provided for most use cases.
     // If supplied, install / use from the tool cache.
@@ -68,12 +70,25 @@ export async function run() {
 
       let dotnetInstaller: DotnetCoreInstaller;
       const uniqueVersions = new Set<string>(versions);
+      // TODO:
+      // Multiple versions requested may not be handled properly...
+      // Standard dotnet installer places multiple versions in a single dir,
+      // while tool-cache expects versions to be in separate dirs.
+      // Stick to consistent tool-cache structure?
+      // Or use standard dotnet installer structure as exception?
+      // Best to only specify one version for now.
       for (const version of uniqueVersions) {
         dotnetInstaller = new DotnetCoreInstaller(version, quality);
         const installedVersion = await dotnetInstaller.installDotnet();
+        core.addPath(process.env['DOTNET_INSTALL_DIR']!);
+        core.info(`added ${process.env['DOTNET_INSTALL_DIR']} to path`);
         installedDotnetVersions.push(installedVersion);
       }
-      DotnetInstallDir.addToPath();
+      // move the path addition into the loop to handle multiple versions
+      // in separate tool-cache install dirs.
+      //DotnetInstallDir.addToPath();
+      // set DOTNET_ROOT to last-found installed version
+      core.exportVariable('DOTNET_ROOT', process.env['DOTNET_INSTALL_DIR']);
     }
 
     const sourceUrl: string = core.getInput('source-url');

@@ -3,7 +3,7 @@ import * as core from '@actions/core';
 import * as exec from '@actions/exec';
 import * as io from '@actions/io';
 import * as hc from '@actions/http-client';
-import {chmodSync} from 'fs';
+import {chmodSync, openSync, closeSync, existsSync} from 'fs';
 import path from 'path';
 import os from 'os';
 import semver from 'semver';
@@ -132,7 +132,10 @@ export class DotnetInstallScript {
   private escapedScript: string;
   private scriptArguments: string[] = [];
 
-  constructor() {
+  constructor(scriptName?: string) {
+    if (scriptName) {
+      this.scriptName = scriptName;
+    }
     this.escapedScript = path
       .join(__dirname, '..', '..', 'externals', this.scriptName)
       .replace(/'/g, "''");
@@ -264,11 +267,35 @@ export class DotnetCoreInstaller {
     const versionResolver = new DotnetVersionResolver(this.version);
     const dotnetVersion = await versionResolver.createDotnetVersion();
 
+    let cacheDir = '';
+    if (core.getBooleanInput('use-toolcache')) {
+      const toolcacheOutput = await new DotnetInstallScript(
+        'check-toolcache.sh'
+      )
+        //.useArguments('--verbose')
+        .useVersion(dotnetVersion, this.quality)
+        .execute();
+
+      if (toolcacheOutput.exitCode) {
+        throw new Error(
+          `Failed in check-toolcache, exit code: ${toolcacheOutput.exitCode}. ${toolcacheOutput.stderr}`
+        );
+      }
+
+      cacheDir = this.parseCacheDir(toolcacheOutput.stdout) as string;
+      core.debug(`cacheDir=${cacheDir}`);
+      if (cacheDir) {
+        process.env['DOTNET_INSTALL_DIR'] = cacheDir;
+      }
+    }
+    //core.info(`DOTNET_INSTALL_DIR=${process.env['DOTNET_INSTALL_DIR']}`);
+
     /**
      * Install dotnet runitme first in order to get
      * the latest stable version of dotnet CLI
      */
     const runtimeInstallOutput = await new DotnetInstallScript()
+      //.useArguments('--dry-run')
       // If dotnet CLI is already installed - avoid overwriting it
       .useArguments(
         IS_WINDOWS ? '-SkipNonVersionedFiles' : '--skip-non-versioned-files'
@@ -294,6 +321,7 @@ export class DotnetCoreInstaller {
      * dotnet CLI
      */
     const dotnetInstallOutput = await new DotnetInstallScript()
+      //.useArguments('--dry-run')
       // Don't overwrite CLI because it should be already installed
       .useArguments(
         IS_WINDOWS ? '-SkipNonVersionedFiles' : '--skip-non-versioned-files'
@@ -308,6 +336,13 @@ export class DotnetCoreInstaller {
       );
     }
 
+    // complete the cache
+    const cacheComplete = cacheDir + '.complete';
+    if (!existsSync(cacheComplete)) {
+      const f = openSync(cacheComplete, 'a');
+      closeSync(f);
+    }
+
     return this.parseInstalledVersion(dotnetInstallOutput.stdout);
   }
 
@@ -320,5 +355,16 @@ export class DotnetCoreInstaller {
       return null;
     }
     return matchedResult.groups!.version;
+  }
+
+  private parseCacheDir(stdout: string): string | null {
+    const regex = /cache_dir=(?<cacheDir>[\S]*)/gm;
+    const matchedResult = regex.exec(stdout);
+
+    if (!matchedResult) {
+      core.warning(`Failed to parse cache_dir`);
+      return null;
+    }
+    return matchedResult.groups!.cacheDir;
   }
 }
