@@ -99388,9 +99388,12 @@ class DotnetVersionResolver {
 exports.DotnetVersionResolver = DotnetVersionResolver;
 DotnetVersionResolver.DotnetCoreIndexUrl = 'https://builds.dotnet.microsoft.com/dotnet/release-metadata/releases-index.json';
 class DotnetInstallScript {
-    constructor() {
+    constructor(scriptName) {
         this.scriptName = utils_1.IS_WINDOWS ? 'install-dotnet.ps1' : 'install-dotnet.sh';
         this.scriptArguments = [];
+        if (scriptName) {
+            this.scriptName = scriptName;
+        }
         this.escapedScript = path_1.default
             .join(__dirname, '..', '..', 'externals', this.scriptName)
             .replace(/'/g, "''");
@@ -99493,11 +99496,28 @@ class DotnetCoreInstaller {
         return __awaiter(this, void 0, void 0, function* () {
             const versionResolver = new DotnetVersionResolver(this.version);
             const dotnetVersion = yield versionResolver.createDotnetVersion();
+            let cacheDir = '';
+            if (core.getBooleanInput('use-toolcache')) {
+                const toolcacheOutput = yield new DotnetInstallScript('check-toolcache.sh')
+                    //.useArguments('--verbose')
+                    .useVersion(dotnetVersion, this.quality)
+                    .execute();
+                if (toolcacheOutput.exitCode) {
+                    throw new Error(`Failed in check-toolcache, exit code: ${toolcacheOutput.exitCode}. ${toolcacheOutput.stderr}`);
+                }
+                cacheDir = this.parseCacheDir(toolcacheOutput.stdout);
+                core.debug(`cacheDir=${cacheDir}`);
+                if (cacheDir) {
+                    process.env['DOTNET_INSTALL_DIR'] = cacheDir;
+                }
+            }
+            //core.info(`DOTNET_INSTALL_DIR=${process.env['DOTNET_INSTALL_DIR']}`);
             /**
              * Install dotnet runitme first in order to get
              * the latest stable version of dotnet CLI
              */
             const runtimeInstallOutput = yield new DotnetInstallScript()
+                //.useArguments('--dry-run')
                 // If dotnet CLI is already installed - avoid overwriting it
                 .useArguments(utils_1.IS_WINDOWS ? '-SkipNonVersionedFiles' : '--skip-non-versioned-files')
                 // Install only runtime + CLI
@@ -99517,6 +99537,7 @@ class DotnetCoreInstaller {
              * dotnet CLI
              */
             const dotnetInstallOutput = yield new DotnetInstallScript()
+                //.useArguments('--dry-run')
                 // Don't overwrite CLI because it should be already installed
                 .useArguments(utils_1.IS_WINDOWS ? '-SkipNonVersionedFiles' : '--skip-non-versioned-files')
                 // Use version provided by user
@@ -99524,6 +99545,12 @@ class DotnetCoreInstaller {
                 .execute();
             if (dotnetInstallOutput.exitCode) {
                 throw new Error(`Failed to install dotnet, exit code: ${dotnetInstallOutput.exitCode}. ${dotnetInstallOutput.stderr}`);
+            }
+            // complete the cache
+            const cacheComplete = cacheDir + '.complete';
+            if (!(0, fs_1.existsSync)(cacheComplete)) {
+                const f = (0, fs_1.openSync)(cacheComplete, 'a');
+                (0, fs_1.closeSync)(f);
             }
             return this.parseInstalledVersion(dotnetInstallOutput.stdout);
         });
@@ -99536,6 +99563,15 @@ class DotnetCoreInstaller {
             return null;
         }
         return matchedResult.groups.version;
+    }
+    parseCacheDir(stdout) {
+        const regex = /cache_dir=(?<cacheDir>[\S]*)/gm;
+        const matchedResult = regex.exec(stdout);
+        if (!matchedResult) {
+            core.warning(`Failed to parse cache_dir`);
+            return null;
+        }
+        return matchedResult.groups.cacheDir;
     }
 }
 exports.DotnetCoreInstaller = DotnetCoreInstaller;
@@ -99608,6 +99644,8 @@ const qualityOptions = [
 function run() {
     return __awaiter(this, void 0, void 0, function* () {
         try {
+            const baseTag = 'v4.3.1';
+            core.info(`sgnus-k8s/setup-dotnet@use-cache: based on actions/setup-dotnet@${baseTag}`);
             //
             // dotnet-version is optional, but needs to be provided for most use cases.
             // If supplied, install / use from the tool cache.
@@ -99645,12 +99683,25 @@ function run() {
                 }
                 let dotnetInstaller;
                 const uniqueVersions = new Set(versions);
+                // TODO:
+                // Multiple versions requested may not be handled properly...
+                // Standard dotnet installer places multiple versions in a single dir,
+                // while tool-cache expects versions to be in separate dirs.
+                // Stick to consistent tool-cache structure?
+                // Or use standard dotnet installer structure as exception?
+                // Best to only specify one version for now.
                 for (const version of uniqueVersions) {
                     dotnetInstaller = new installer_1.DotnetCoreInstaller(version, quality);
                     const installedVersion = yield dotnetInstaller.installDotnet();
+                    core.addPath(process.env['DOTNET_INSTALL_DIR']);
+                    core.info(`added ${process.env['DOTNET_INSTALL_DIR']} to path`);
                     installedDotnetVersions.push(installedVersion);
                 }
-                installer_1.DotnetInstallDir.addToPath();
+                // move the path addition into the loop to handle multiple versions
+                // in separate tool-cache install dirs.
+                //DotnetInstallDir.addToPath();
+                // set DOTNET_ROOT to last-found installed version
+                core.exportVariable('DOTNET_ROOT', process.env['DOTNET_INSTALL_DIR']);
             }
             const sourceUrl = core.getInput('source-url');
             const configFile = core.getInput('config-file');
