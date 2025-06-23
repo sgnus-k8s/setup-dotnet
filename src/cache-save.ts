@@ -3,7 +3,7 @@ import * as cache from '@actions/cache';
 import fs from 'node:fs';
 import {getNuGetFolderPath} from './cache-utils';
 import {State} from './constants';
-import * as custom from './custom/cache';
+import * as custom from "./custom/cache";
 
 // Catch and log any unhandled exceptions.  These exceptions can leak out of the uploadChunk method in
 // @actions/toolkit when a failed upload closes the file descriptor causing any in-process reads to

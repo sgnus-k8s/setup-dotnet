@@ -3,7 +3,7 @@ import {join} from 'node:path';
 import * as cache from '@actions/cache';
 import * as core from '@actions/core';
 import * as glob from '@actions/glob';
-import * as custom from './custom/cache';
+import * as custom from "./custom/cache";
 
 import {getNuGetFolderPath} from './cache-utils';
 import {lockFilePatterns, State, Outputs} from './constants';
@@ -26,6 +26,9 @@ export const restoreCache = async (cacheDependencyPath?: string) => {
   const {'global-packages': cachePath} = await getNuGetFolderPath();
   let cacheKey;
   if (core.getBooleanInput('custom') && custom.isFeatureAvailable()) {
+    if (core.getBooleanInput('clear-cache')) {
+      await custom.rmCache(primaryKey);
+    }
     cacheKey = await custom.restoreCache([cachePath], primaryKey);
   } else {
     cacheKey = await cache.restoreCache([cachePath], primaryKey);
