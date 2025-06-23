@@ -86939,11 +86939,12 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
     });
 };
 Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.saveCache = exports.restoreCache = exports.ValidationError = exports.isFeatureAvailable = exports.CacheFileSizeLimit = void 0;
+exports.rmCache = exports.saveCache = exports.restoreCache = exports.ValidationError = exports.isFeatureAvailable = exports.CacheFileSizeLimit = void 0;
 const core = __importStar(__nccwpck_require__(2186));
 const path = __importStar(__nccwpck_require__(1017));
 const utils = __importStar(__nccwpck_require__(1518));
 const tar_1 = __nccwpck_require__(6490);
+const fs_1 = __nccwpck_require__(7147);
 const backend = __importStar(__nccwpck_require__(9268));
 exports.CacheFileSizeLimit = 10 * Math.pow(1024, 3); // 10GiB
 /**
@@ -87104,6 +87105,17 @@ function saveCache(paths_1, key_1, options_1) {
     });
 }
 exports.saveCache = saveCache;
+function rmCache(key) {
+    return __awaiter(this, void 0, void 0, function* () {
+        checkKey(key);
+        const cacheFile = yield backend.getCacheFile(key);
+        if (cacheFile) {
+            yield fs_1.promises.rm(cacheFile, { force: true });
+            core.info(`Removed cached key: ${cacheFile}`);
+        }
+    });
+}
+exports.rmCache = rmCache;
 
 
 /***/ }),
