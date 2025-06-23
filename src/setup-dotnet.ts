@@ -22,7 +22,9 @@ export type QualityOptions = (typeof qualityOptions)[number];
 export async function run() {
   try {
     const baseTag = 'v4.3.1';
-    core.info(`sgnus-k8s/setup-dotnet@use-cache: based on actions/setup-dotnet@${baseTag}`);
+    core.info(
+      `sgnus-k8s/setup-dotnet@use-cache: based on actions/setup-dotnet@${baseTag}`
+    );
     //
     // dotnet-version is optional, but needs to be provided for most use cases.
     // If supplied, install / use from the tool cache.

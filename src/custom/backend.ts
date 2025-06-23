@@ -1,23 +1,21 @@
 import * as core from '@actions/core';
 import * as path from 'path';
-import { promises as fs } from 'fs';
+import {promises as fs} from 'fs';
 
 export async function getArchiveLocation(): Promise<string | undefined> {
-  const cacheTopDir = process.env["GHRUNNER_CACHE"] as string;
+  const cacheTopDir = process.env['GHRUNNER_CACHE'] as string;
   if (!cacheTopDir) {
     core.warning('getArchiveLocation: cache not available');
     return undefined;
   }
-  const repo = process.env["GITHUB_REPOSITORY"] as string;
-  const ref = process.env["GITHUB_REF_NAME"] as string;
+  const repo = process.env['GITHUB_REPOSITORY'] as string;
+  const ref = process.env['GITHUB_REF_NAME'] as string;
   const cacheDir = path.join(cacheTopDir, repo, ref);
   core.debug(`getArchiveLocation: ${cacheDir}`);
   return cacheDir;
 }
 
-export async function getCacheFile(
-  key: string,
-): Promise<string | undefined> {
+export async function getCacheFile(key: string): Promise<string | undefined> {
   const archiveLocation = await getArchiveLocation();
   //core.info(`getCacheFile: archiveLocation = ${archiveLocation}`);
   if (!archiveLocation) {
@@ -42,7 +40,7 @@ export async function getCacheFile(
 
 export async function downloadCache(
   cacheFile: string,
-  archivePath: string,
+  archivePath: string
 ): Promise<void> {
   await fs.copyFile(cacheFile, archivePath);
 }
@@ -56,7 +54,10 @@ export async function saveCache(
   if (archiveLocation) {
     const cacheFile = path.join(archiveLocation, key);
     try {
-      const dir = await fs.mkdir(path.dirname(cacheFile), {recursive:true,mode:'0775'});
+      const dir = await fs.mkdir(path.dirname(cacheFile), {
+        recursive: true,
+        mode: '0775'
+      });
       core.debug(`saveCache: dir created: ${dir}`);
       await fs.copyFile(archivePath, cacheFile);
       core.debug(`saveCache: saved ${archivePath} to ${cacheFile}`);

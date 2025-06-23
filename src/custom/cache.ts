@@ -3,11 +3,11 @@
 import * as core from '@actions/core';
 import * as path from 'path';
 import * as utils from '@actions/cache/lib/internal/cacheUtils';
-import { createTar, extractTar, listTar } from '@actions/cache/lib/internal/tar';
-import { DownloadOptions, UploadOptions } from '@actions/cache/lib/options';
+import {createTar, extractTar, listTar} from '@actions/cache/lib/internal/tar';
+import {DownloadOptions, UploadOptions} from '@actions/cache/lib/options';
 import * as backend from './backend';
 
-export const CacheFileSizeLimit = 10 * Math.pow(1024, 3) // 10GiB
+export const CacheFileSizeLimit = 10 * Math.pow(1024, 3); // 10GiB
 
 /**
  * isFeatureAvailable to check the presence of Actions cache service
@@ -15,7 +15,7 @@ export const CacheFileSizeLimit = 10 * Math.pow(1024, 3) // 10GiB
  * @returns boolean return true if Actions cache service feature is available, otherwise false
  */
 export function isFeatureAvailable(): boolean {
-  return !!process.env['GHRUNNER_CACHE']
+  return !!process.env['GHRUNNER_CACHE'];
 }
 
 export class ValidationError extends Error {
@@ -82,9 +82,7 @@ export async function restoreCache(
   let archivePath = '';
   const cacheFile = await backend.getCacheFile(primaryKey);
   if (!cacheFile) {
-    core.debug(
-      `Cache not found for key: ${primaryKey}`
-    )
+    core.debug(`Cache not found for key: ${primaryKey}`);
     return undefined;
   }
 
@@ -103,14 +101,11 @@ export async function restoreCache(
 
   // Download the cache from the cache entry
   try {
-    await backend.downloadCache(
-      cacheFile,
-      archivePath
-    );
+    await backend.downloadCache(cacheFile, archivePath);
     const archiveFileSize = utils.getArchiveFileSizeInBytes(archivePath);
     core.info(
       `Cache Size: ~${Math.round(
-          archiveFileSize / (1024 * 1024)
+        archiveFileSize / (1024 * 1024)
       )} MB (${archiveFileSize} B)`
     );
 
@@ -135,7 +130,6 @@ export async function restoreCache(
 
   return undefined;
 }
-
 
 /**
  * Saves a list of files with the specified key
@@ -189,7 +183,7 @@ export async function saveCache(
         )} MB (${archiveFileSize} B) is over the ${Math.round(
           CacheFileSizeLimit / (1024 * 1024)
         )} MB (${CacheFileSizeLimit} B) limit, not saving cache.`
-      )
+      );
     }
 
     await backend.saveCache(key, archivePath);
@@ -213,4 +207,3 @@ export async function saveCache(
 
   return cacheId;
 }
-

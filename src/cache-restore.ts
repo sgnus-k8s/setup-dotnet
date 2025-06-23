@@ -3,7 +3,7 @@ import {join} from 'node:path';
 import * as cache from '@actions/cache';
 import * as core from '@actions/core';
 import * as glob from '@actions/glob';
-import * as custom from "./custom/cache";
+import * as custom from './custom/cache';
 
 import {getNuGetFolderPath} from './cache-utils';
 import {lockFilePatterns, State, Outputs} from './constants';
