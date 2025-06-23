@@ -100045,6 +100045,11 @@ function run() {
                 //DotnetInstallDir.addToPath();
                 // set DOTNET_ROOT to last-found installed version
                 core.exportVariable('DOTNET_ROOT', process.env['DOTNET_INSTALL_DIR']);
+                core.info(`set DOTNET_ROOT to ${process.env['DOTNET_ROOT']}`);
+                core.exportVariable('DOTNET_NOLOGO', 'true');
+                core.info(`set DOTNET_NOLOGO to ${process.env['DOTNET_NOLOGO']}`);
+                core.exportVariable('NUGET_PACKAGES', path_1.default.join(process.env['HOME'] + '', '.nuget', 'packages'));
+                core.info(`set NUGET_PACKAGES to ${process.env['NUGET_PACKAGES']}`);
             }
             const sourceUrl = core.getInput('source-url');
             const configFile = core.getInput('config-file');
