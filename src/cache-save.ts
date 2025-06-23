@@ -3,6 +3,7 @@ import * as cache from '@actions/cache';
 import fs from 'node:fs';
 import {getNuGetFolderPath} from './cache-utils';
 import {State} from './constants';
+import * as custom from "./custom/cache";
 
 // Catch and log any unhandled exceptions.  These exceptions can leak out of the uploadChunk method in
 // @actions/toolkit when a failed upload closes the file descriptor causing any in-process reads to
@@ -46,7 +47,12 @@ const cachePackages = async () => {
     return;
   }
 
-  const cacheId = await cache.saveCache([cachePath], primaryKey);
+  let cacheId;
+  if (core.getBooleanInput('custom')) {
+    cacheId = await custom.saveCache([cachePath], primaryKey);
+  } else {
+    cacheId = await cache.saveCache([cachePath], primaryKey);
+  }
   if (cacheId == -1) {
     return;
   }

@@ -4,7 +4,7 @@ import * as fs from 'fs';
 import path from 'path';
 import semver from 'semver';
 import * as auth from './authutil';
-import {isCacheFeatureAvailable} from './cache-utils';
+//import {isCacheFeatureAvailable} from './cache-utils';
 import {restoreCache} from './cache-restore';
 import {Outputs} from './constants';
 import JSON5 from 'json5';
@@ -99,7 +99,7 @@ export async function run() {
 
     outputInstalledVersion(installedDotnetVersions, globalJsonFileInput);
 
-    if (core.getBooleanInput('cache') && isCacheFeatureAvailable()) {
+    if (core.getBooleanInput('cache')) {
       const cacheDependencyPath = core.getInput('cache-dependency-path');
       await restoreCache(cacheDependencyPath);
     }
